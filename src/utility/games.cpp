@@ -205,12 +205,14 @@ InsertTrieKey (std::pair <std::string, app_record_s>* app, Trie* labels)
 #pragma endregion
 
 
-
+extern std::recursive_mutex g_apps_mutex;
 
 // This sorts the app vector
 void
 SKIF_GamingCollection::SortApps (std::vector <std::pair <std::string, app_record_s> > *apps)
 {
+  std::scoped_lock app_lock (g_apps_mutex);
+
   static SKIF_RegistrySettings& _registry   = SKIF_RegistrySettings::GetInstance ( );
 
   // The base sort is by name
@@ -328,6 +330,8 @@ SKIF_GamingCollection::RefreshRunningApps (std::vector <std::pair <std::string, 
 
   if (forced || (current_time > lastGameRefresh + 666 * focus_multiplier && current_time > last_checked + 333UL * focus_multiplier && (! ImGui::IsAnyMouseDown ( ))))
   {
+    std::scoped_lock app_lock (g_apps_mutex);
+
     if (! forced)
       last_checked = current_time;
 
@@ -587,17 +591,21 @@ SKIF_GamingCollection::RefreshRunningApps (std::vector <std::pair <std::string, 
     }
   }
 
-  // Push staging changes to actual state
-  for (auto& app : *apps)
   {
-    if (app.second._staging.running || app.second._status.running)
-      any_running = true;
+    std::scoped_lock app_lock (g_apps_mutex);
 
-    if (app.second._status.dwTimeDelayChecks > current_time && (! forced))
-        continue;
+    // Push staging changes to actual state
+    for (auto& app : *apps)
+    {
+      if (app.second._staging.running || app.second._status.running)
+        any_running = true;
 
-    app.second._status.running     = app.second._staging.running;
-    app.second._status.running_pid = app.second._staging.running_pid;
+      if (app.second._status.dwTimeDelayChecks > current_time && (! forced))
+          continue;
+
+      app.second._status.running     = app.second._staging.running;
+      app.second._status.running_pid = app.second._staging.running_pid;
+    }
   }
 
   // If any game is running, and SKIF is not focused, then trigger a repaint every 2 seconds

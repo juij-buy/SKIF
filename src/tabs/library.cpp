@@ -148,7 +148,8 @@ SKIF_Lib_GameWorkerThread_s aGameWorkers[MAX_GAMEWORKER] = { };
 
 std::vector <
   std::pair < std::string, app_record_s >
-            > g_apps;
+            >        g_apps;
+std::recursive_mutex g_apps_mutex;
 
 std::set    < std::string >
               g_apptickets;
@@ -4982,6 +4983,8 @@ SKIF_UI_Tab_DrawLibrary (void)
       //SetThreadPriority (GetCurrentThread (), THREAD_MODE_BACKGROUND_BEGIN);
 
       PLOG_DEBUG << "SKIF_LibraryWorker thread started!";
+
+      std::scoped_lock app_lock (g_apps_mutex);
       
       DWORD pre   = 0,
             post  = 0,
@@ -5609,6 +5612,8 @@ SKIF_UI_Tab_DrawLibrary (void)
       }
     }
 
+    std::scoped_lock app_lock (g_apps_mutex);
+
     // Clear current data
     g_apps         = { };
     g_apptickets   = { };
@@ -5795,6 +5800,8 @@ SKIF_UI_Tab_DrawLibrary (void)
 
       if (WaitForSingleObject (worker.hWorker, 0) == WAIT_OBJECT_0)
       {
+        std::scoped_lock app_lock (g_apps_mutex);
+
         for (auto& app : g_apps)
         {
           if (app.second.id    == worker.app.id &&
