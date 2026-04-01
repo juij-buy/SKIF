@@ -7224,8 +7224,25 @@ SKIF_UI_Tab_DrawLibrary (void)
 
 #pragma endregion
 
+  static HANDLE hRefreshSignal =
+    CreateEvent (nullptr, FALSE, FALSE, nullptr);
+
+  static HANDLE hRefreshThread =
+    CreateThread (nullptr, 0, [](void*) -> DWORD
+    {
+      SKIF_Util_SetThreadDescription (GetCurrentThread (), L"SKIF_LibRefreshWorker");
+
+      while (WaitForSingleObject (hRefreshSignal, INFINITE) == WAIT_OBJECT_0)
+      {
+        SKIF_GamingCollection::RefreshRunningApps (&g_apps);
+      }
+
+      return 0;
+    }, nullptr, 0, nullptr
+  );
+
   // Refresh running state of SKIF Custom, Epic, GOG, and Xbox titles
-  SKIF_GamingCollection::RefreshRunningApps (&g_apps);
+  SetEvent (hRefreshThread);
 
 #pragma region ServiceMenu
 
