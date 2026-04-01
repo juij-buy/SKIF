@@ -7243,7 +7243,7 @@ SKIF_UI_Tab_DrawLibrary (void)
   );
 
   // Refresh running state of SKIF Custom, Epic, GOG, and Xbox titles
-  SetEvent (hRefreshThread);
+  SetEvent (hRefreshSignal);
 
 #pragma region ServiceMenu
 
