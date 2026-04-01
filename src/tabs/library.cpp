@@ -6111,8 +6111,9 @@ SKIF_UI_Tab_DrawLibrary (void)
 
   static int    queuePosGameCover  = 0;
   static char   cstrLabelLoading[] = "...";
-  static char   cstrLabelMissing[] = "             Missing cover :(\n"
-                                      "Right click to set one manually";
+  static char   cstrLabelMissing[] = "                      Missing cover :(\n"
+                                      "           Right-click to set one manually\n\n"
+                                      "You can drag and drop an image file or URL here";
   static char   cstrLabelGOGUser[] = "Please sign in to GOG Galaxy to\n"
                                       "allow the cover to be populated :)";
   char*         pcstrLabel         =  nullptr;
