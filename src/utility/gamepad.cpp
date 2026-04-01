@@ -39,21 +39,9 @@ SKIF_GamePadInputHelper::InvalidateGamePads (void)
 XINPUT_STATE
 SKIF_GamePadInputHelper::GetXInputState (void)
 {
-  static HWND    hWndLastForeground = 0;
-  static DWORD  dwActivePid         = 0x0;
-
-  HWND hWndForeground = GetForegroundWindow ();
-
-  // GetWindowThreadProcessId has surprisingly high overhead, if the foreground window
-  //   has not changed, then we can avoid calling it.
-  if (std::exchange (hWndLastForeground, hWndForeground) != hWndForeground)
-  {
-    GetWindowThreadProcessId (hWndForeground, &dwActivePid);
-  }
-
   auto pGamepad = m_xisGamepad;
 
-  if (dwActivePid == GetCurrentProcessId () && pGamepad != nullptr)
+  if (pGamepad != nullptr)
   {
     WINDOWINFO winfo        = {                 };
                winfo.cbSize = sizeof (WINDOWINFO);
@@ -176,24 +164,14 @@ SKIF_GamePadInputHelper::UpdateXInputState (void)
 
     m_bWantUpdate.store (false);
 
-    static HWND    hWndLastForeground = 0;
-    static DWORD  dwActivePid         = 0x0;
+    WINDOWINFO winfo        = {                 };
+               winfo.cbSize = sizeof (WINDOWINFO);
 
-    HWND                                   hWndForeground =    GetForegroundWindow ();
-    if (std::exchange (hWndLastForeground, hWndForeground) != hWndForeground)
-      GetWindowThreadProcessId (           hWndForeground, &dwActivePid);
-
-    if (dwActivePid == GetProcessId (GetCurrentProcess ()))
+    if (GetWindowInfo (SKIF_ImGui_hWnd, &winfo) &&
+                                        (winfo.dwWindowStatus & WS_ACTIVECAPTION) != 0)
     {
-      WINDOWINFO winfo        = {                 };
-                 winfo.cbSize = sizeof (WINDOWINFO);
-
-      if (GetWindowInfo (SKIF_ImGui_hWnd, &winfo) &&
-                                          (winfo.dwWindowStatus & WS_ACTIVECAPTION) != 0)
-      {
-        // Trigger the main thread to refresh its focus, which will also trickle down to us
-        SendMessage (m_hWindowHandle, WM_SKIF_REFRESHFOCUS, 0x0, 0x0);
-      }
+      // Trigger the main thread to refresh its focus, which will also trickle down to us
+      SendMessage (m_hWindowHandle, WM_SKIF_REFRESHFOCUS, 0x0, 0x0);
     }
   }
 
@@ -217,9 +195,6 @@ SKIF_GamePadInputHelper::UpdateXInputState (void)
 
   static std::array<gamepad_state_s, XUSER_MAX_COUNT> history;
 
-  static HWND    hWndLastForeground = 0;
-  static DWORD  dwActivePid         = 0x0;
-
   bool windowIsActive = false;
 
   WINDOWINFO winfo        = {                 };
@@ -229,23 +204,6 @@ SKIF_GamePadInputHelper::UpdateXInputState (void)
                                       (winfo.dwWindowStatus & WS_ACTIVECAPTION) != 0)
   {
     windowIsActive = true;
-  }
-
-  // GetWindowThreadProcessId has surprisingly high overhead, if the foreground window
-  //   has not changed, then we can avoid calling it.
-  HWND                                   hWndForeground =    GetForegroundWindow ();
-  if (std::exchange (hWndLastForeground, hWndForeground) != hWndForeground)
-    GetWindowThreadProcessId (           hWndForeground, &dwActivePid);
-
-  static DWORD dwLastActivePid    = dwActivePid;
-  static DWORD dwTimeOfActivation = 0;
-
-  if (dwLastActivePid != dwActivePid && dwActivePid == GetCurrentProcessId ())
-  {
-    if (windowIsActive)
-    {
-      dwTimeOfActivation = SKIF_Util_timeGetTime ();
-    }
   }
 
   for ( auto idx : XUSER_INDEXES )
@@ -261,10 +219,7 @@ SKIF_GamePadInputHelper::UpdateXInputState (void)
       if (dwResult == ERROR_DEVICE_NOT_CONNECTED)
         m_bGamepads    [idx].store (false);
 
-      else if (dwResult == ERROR_SUCCESS && GetCurrentProcessId () == dwActivePid &&
-                                                   dwLastActivePid == dwActivePid &&
-                                                   dwTimeOfActivation < SKIF_Util_timeGetTime () - 500UL &&
-                                                   windowIsActive)
+      else if (dwResult == ERROR_SUCCESS && windowIsActive)
       {
         // If button state is different, this controller is active...
         if ( xinput_state.dwPacketNumber != local.last_state.dwPacketNumber )
@@ -331,17 +286,6 @@ SKIF_GamePadInputHelper::UpdateXInputState (void)
 
   if (newest.slot == INFINITE)
       newest.state = XSTATE_EMPTY;
-
-  if (dwActivePid != GetCurrentProcessId () ||
-         !IsWindowVisible (SKIF_ImGui_hWnd) ||
-      dwTimeOfActivation > SKIF_Util_timeGetTime () - 500UL ||
-      !windowIsActive)
-  {
-    // Neutralize input because SKIF is not in the foreground
-    newest.state = XSTATE_EMPTY;
-  }
-
-  dwLastActivePid = dwActivePid;
 
   auto pGamepad =
     &m_xisGamepadBuffers [(m_iCurrentGamepad + 1) % 3];
