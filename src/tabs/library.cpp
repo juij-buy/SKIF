@@ -5782,7 +5782,7 @@ SKIF_UI_Tab_DrawLibrary (void)
         selection.dir_watch.reset ( );
 
       if (! pApp->install_dir.empty())
-        selection.dir_watch.isSignaled (pApp->install_dir);
+        selection.dir_watch.isSignaled (pApp->install_dir, UITab_None, TRUE);
     }
 
     int availableWorker = -1;
