@@ -597,6 +597,9 @@ SKIF_GamingCollection::RefreshRunningApps (std::vector <std::pair <std::string, 
     // Push staging changes to actual state
     for (auto& app : *apps)
     {
+      if (app.second.store == app_record_s::Store::Steam && (steamRunning && ! steamFallback))
+        continue;
+
       if (app.second._staging.running || app.second._status.running)
         any_running = true;
 

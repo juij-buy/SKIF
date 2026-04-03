@@ -149,7 +149,7 @@ SKIF_Lib_GameWorkerThread_s aGameWorkers[MAX_GAMEWORKER] = { };
 std::vector <
   std::pair < std::string, app_record_s >
             >        g_apps;
-std::recursive_mutex g_apps_mutex;
+std::recursive_mutex g_apps_mutex; // More specifically, this is intended to guard access to the run state of games.
 
 std::set    < std::string >
               g_apptickets;
@@ -865,6 +865,8 @@ LaunchGame (app_record_s* pApp)
       std::wstring launchOptions = SK_FormatStringW(LR"(com.epicgames.launcher://apps/%ws?action=launch&silent=true)", launchConfig->getLaunchOptions().c_str());
       if (SKIF_Util_OpenURI (launchOptions) != 0)
       {
+        std::scoped_lock app_lock (g_apps_mutex);
+
         // Don't check the running state for at least 7.5 seconds
         pApp->_status.dwTimeDelayChecks = current_time + 7500;
         pApp->_status.running           = true;
@@ -935,6 +937,8 @@ LaunchGame (app_record_s* pApp)
 
       else if (SKIF_Util_CreateProcess (launchConfig->executable_helper, L"", L"", nullptr, proc))
       {
+        std::scoped_lock app_lock (g_apps_mutex);
+
         launch_proc = proc;
 
         // Don't check the running state for at least 3.0 seconds
@@ -961,6 +965,8 @@ LaunchGame (app_record_s* pApp)
             highlander =
         CreateThread (nullptr, 0x0, [](LPVOID pUser)->DWORD
         {
+          std::scoped_lock app_lock (g_apps_mutex);
+
           app_record_s *pApp =
             (app_record_s *)pUser;
 
@@ -1314,6 +1320,8 @@ LaunchGame (app_record_s* pApp)
       //SKIF_Util_OpenURI (GOGGalaxy_Path, SW_SHOWDEFAULT, L"OPEN", launchOptions.c_str());
       if (SKIF_Util_CreateProcess (GOGGalaxy_Path, launchOptions.c_str(), L""))
       {
+        std::scoped_lock app_lock (g_apps_mutex);
+
         // Don't check the running state for at least 7.5 seconds
         pApp->_status.dwTimeDelayChecks = current_time + 7500;
         pApp->_status.running           = true;
@@ -1366,6 +1374,8 @@ LaunchGame (app_record_s* pApp)
         std::wstring launchOptions = SK_FormatStringW (LR"(steam://launch/%d/dialog)", pApp->id);
         if (SKIF_Util_OpenURI (launchOptions) != 0)
         {
+          std::scoped_lock app_lock (g_apps_mutex);
+
           // Don't check the running state for at least 7.5 seconds
           pApp->_status.dwTimeDelayChecks = current_time + 7500;
           pApp->_status.running           = true;
