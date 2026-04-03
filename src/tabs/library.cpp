@@ -965,8 +965,6 @@ LaunchGame (app_record_s* pApp)
             highlander =
         CreateThread (nullptr, 0x0, [](LPVOID pUser)->DWORD
         {
-          std::scoped_lock app_lock (g_apps_mutex);
-
           app_record_s *pApp =
             (app_record_s *)pUser;
 
