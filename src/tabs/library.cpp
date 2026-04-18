@@ -49,6 +49,9 @@
 #include <filesystem>
 #include <string>
 #include <sstream>
+#include <future>
+#include <thread>
+#include <chrono>
 #include <concurrent_queue.h>
 #include <utility/fsutil.h>
 #include <atlimage.h>
@@ -2355,7 +2358,14 @@ DrawGameContextMenu (app_record_s* pApp)
 
       if (SKIF_ImGui_MenuItemEx2 ("Switch to game", ICON_FA_WINDOW_RESTORE))
       {
-        ResumeGame (GetProcessId (hProcess));
+        auto async_switch =
+        std::async (
+          std::launch::async, [hProcess,ResumeGame](void)
+          {
+            std::this_thread::sleep_for (std::chrono::milliseconds (125));
+            ResumeGame (GetProcessId (hProcess));
+          }
+        );
       }
       
       if (SKIF_ImGui_MenuItemEx2 ("Terminate game", ICON_FA_POWER_OFF))
@@ -2374,7 +2384,14 @@ DrawGameContextMenu (app_record_s* pApp)
 
       if (SKIF_ImGui_MenuItemEx2 ("Switch to game", ICON_FA_WINDOW_RESTORE))
       {
-        ResumeGame (pApp->_status.running_pid);
+        auto async_switch =
+        std::async (
+          std::launch::async, [pApp,ResumeGame](void)
+          {
+            std::this_thread::sleep_for (std::chrono::milliseconds (125));
+            ResumeGame (pApp->_status.running_pid);
+          }
+        );
       }
 
       if (SKIF_ImGui_MenuItemEx2 ("Terminate game", ICON_FA_POWER_OFF))
